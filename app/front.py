@@ -1,5 +1,6 @@
 import time
 import gradio as gr
+from maestro import Maestro
 
 from execute_backend import mock_llm
 
@@ -17,8 +18,17 @@ def echo_multimodal(message, history):
             response.append(gr.File(value=file))
     return response
 
-def echo_history(message, history):
-    return f"Vous avez message {message} + \n historique: {history}" 
+
+# Fonction de fallback
+def general_fallback(prompt):
+    return f"[Fallback] Je ne sais pas exactement quel modèle utiliser pour: {prompt}"
+
+
+maestro = Maestro()
+
+def send(message, history):
+    response = maestro.handle_request(message, fallback_fn=general_fallback)
+    return response
 
 demo = gr.ChatInterface(
     fn=send,

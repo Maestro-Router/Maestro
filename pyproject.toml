@@ -8,6 +8,7 @@ dependencies = [
     "fastapi>=0.121.2",
     "gradio>=4.44.1",
     "ipykernel>=6.31.0",
+    "sentence-transformers>=5.1.2",
     "uvicorn>=0.38.0",
 ]
 
