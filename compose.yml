@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: a-python-project-template:local
+    ports:
+      - "8000:8000"
+    # volumes:
+    #   - 
+    # environment:
+    #   - 
+    # command: python main.py
+
+  doc:
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    image: a-python-project-template-docs:local
+    ports:
+      - "8080:80"

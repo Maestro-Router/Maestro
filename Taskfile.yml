@@ -1,0 +1,42 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install all project dependencies
+    cmds:
+      - uv sync
+
+  dev:
+    desc: Start the development server with auto-reload
+    cmds:
+      - uv run uvicorn app:app --reload
+
+  docker:
+    desc: Build and run the Docker stack in the foreground
+    cmds:
+      - docker compose -f compose.yml up --build --remove-orphans
+
+  dockerd:
+    desc: Build and run the Docker stack in detached mode
+    cmds:
+      - docker compose -f compose.yml up --build --remove-orphans -d
+
+  lint:
+    desc: Run all linting hooks
+    cmds:
+      - pre-commit run -a
+
+  format:
+    desc: Automatically format the codebase
+    cmds:
+      - ruff check --fix .
+
+  docs: 
+    desc: Build the MkDocs static site
+    cmds:
+      - mkdocs build
+
+  docs:serve:
+    desc: Serve the MkDocs site locally (dev)
+    cmds:
+      - mkdocs serve
