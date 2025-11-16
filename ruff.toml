@@ -1,0 +1,20 @@
+target-version = "py310"
+extend-include = ["*.ipynb"]
+
+[lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "C",  # mccabe complexity
+    "N",  # naming conventions
+    # "S",  # security issues
+    "F",  # formatting
+    "I",  # import conventions
+    "B",  # bug risk
+    "UP",  # unused parameters
+    "W",  # whitespace
+]
+ignore = ["E501"]  # Example: ignore line-length rule
+
+[format]
+quote-style = "double"
