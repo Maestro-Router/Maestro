@@ -1,10 +1,8 @@
-from app.tasks.base import Task
-import easyocr
-import numpy as np
-from PIL import Image
-import io
-import cv2
 
+import cv2
+import easyocr
+
+from app.tasks.base import Task
 
 reader = easyocr.Reader(['en'])
 
@@ -17,11 +15,12 @@ def _resolver(query: str) -> str:
 task = Task(
     name="OCR",
     description=(
-        "Optical Character Recognition for images and scanned documents. Returns extracted "
-        "text along with confidence metadata when available. Input: images or image URLs; "
-        "Output: raw extracted text and structured fields for tables/forms. Edge cases: low-"
-        "quality images, handwriting, mixed languages - resolver should attempt language "
-        "detection and fallback gracefully."
+        "Reconnaissance optique de caractères pour images et documents scannés. "
+        "Renvoie le texte extrait avec les métadonnées de confiance lorsque disponibles. "
+        "Entrée : images ou URL d'images ; "
+        "Sortie : texte brut extrait et champs structurés pour tableaux/formulaires. "
+        "Cas particuliers : images de faible qualité, écriture manuscrite, langues mixtes - "
+        "le résolveur doit tenter la détection de la langue et gérer les cas limites avec souplesse."
     ),
     resolver=_resolver,
 )

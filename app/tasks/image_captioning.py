@@ -13,7 +13,6 @@ Note: URL fetching is intentionally omitted to avoid network calls inside the re
 an already-downloaded PIL Image or a local path.
 """
 
-import time
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +38,7 @@ _GLOBAL_MODEL: dict[str, Any] = {}
 
 model = VisionEncoderDecoderModel.from_pretrained("cnmoro/tiny-image-captioning")
 tokenizer = AutoTokenizer.from_pretrained("cnmoro/tiny-image-captioning")
-image_processor = AutoImageProcessor.from_pretrained("cnmoro/tiny-image-captioning")
+image_processor = AutoImageProcessor.from_pretrained("cnmoro/tiny-image-captioning", use_fast=True)
 
 
 def _open_image(source: str | Path | Image.Image) -> Image.Image:
@@ -66,10 +65,10 @@ def _resolver(
     generated_ids = model.generate(
         pixel_values,
         temperature=0.7,
-        top_p=0.8,
+        top_p=1,
         top_k=50,
         num_beams=3,
-        max_length=16,
+        max_length=25,
         min_length=1,
     )
     generated_text = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
@@ -77,11 +76,12 @@ def _resolver(
 
 
 task = Task(
-    name="Image Captioning",
+    name="Génération de légendes d'images",
     description=(
-        "Generate descriptive, context-aware captions for images. Useful for accessibility, "
-        "content moderation, and metadata generation. Input: single image or PIL Image; "
-        "Output: a short descriptive caption."
+        "Générer des légendes descriptives et adaptées au contexte pour des images. "
+        "Utile pour l'accessibilité, la modération de contenu et la génération de métadonnées. "
+        "Entrée : image unique ou objet PIL Image ; "
+        "Sortie : une courte légende descriptive."
     ),
     resolver=_resolver,
 )

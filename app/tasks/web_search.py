@@ -1,28 +1,20 @@
-from app.tasks.base import Task
 from duckduckgo_search import DDGS
+
+from app.tasks.base import Task
 
 
 def _resolver(query: str) -> str:
-    """
-    Perform a web search and return relevant results with source links.
-
-    Args:
-        query: The search query string
-
-    Returns:
-        A formatted string with search results and URLs
-    """
     try:
         ddgs = DDGS()
         results = ddgs.text(query["text"], max_results=5)
 
         if not results:
-            return "No results found for your query."
+            return "Pas de résultats trouvés pour la requête."
 
         # Format results with title and URL
         formatted_results = []
         for i, result in enumerate(results, 1):
-            title = result.get('title', 'No title')
+            title = result.get('title', 'Pas de titre')
             url = result.get('href', '')
             snippet = result.get('body', '')
 
@@ -32,21 +24,21 @@ def _resolver(query: str) -> str:
                 f"   {snippet[:150]}{'...' if len(snippet) > 150 else ''}"
             )
 
-        return "Here are some relevant links:\n\n" + "\n\n".join(formatted_results)
+        return "Voici quelques liens pertinents :\n\n" + "\n\n".join(formatted_results)
 
     except Exception as e:
-        return f"Error performing search: {str(e)}"
+        return f"Erreur lors de la recherche : {str(e)}"
 
 
 task = Task(
-    name="Web Search",
+    name="Recherche Web",
     description=(
-        "Search the web and return a concise set of relevant results and source links. "
-        "Designed to extract and surface factual snippets, authoritative references, and "
-        "URLs that support user queries. Input: user information request or question. Output: "
-        "a ranked list of short snippets with source URLs. Edge cases: ambiguous queries, "
-        "requests for personal data or paid content. The resolver should favor high-quality "
-        "domains and include snippet context when possible."
+        "Rechercher sur le web et renvoyer un ensemble concis de résultats pertinents avec liens sources. "
+        "Conçu pour extraire et présenter des extraits factuels, des références fiables et des URL soutenant les requêtes utilisateur. "
+        "Entrée : question ou demande d'information de l'utilisateur ; "
+        "Sortie : liste classée d'extraits courts avec URL source. "
+        "Cas particuliers : requêtes ambiguës, demandes de données personnelles ou contenus payants. "
+        "Le résolveur doit privilégier les domaines de qualité et inclure le contexte des extraits lorsque possible."
     ),
     resolver=_resolver,
 )

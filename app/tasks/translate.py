@@ -1,6 +1,7 @@
-from app.tasks.base import Task
 import torch
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+from app.tasks.base import Task
 
 
 def text_query(query):
@@ -130,12 +131,13 @@ def _translate_resolver(query: dict) -> dict:
 # ---------------------------------------------------------------------
 
 task = Task(
-    name="Translate",
+    name="Traduction",
     description=(
-        "High-fidelity bilingual translation (French <-> English) using "
-        "NLLB-200 1.3B. Preserves meaning, tone, domain terminology, and "
-        "idiomatic expressions. Handles entities and code fragments safely. "
-        "Input: plain text in FR or EN. Output: translated text."
+        "Traduction bilingue haute fidélité (Français <-> Anglais) utilisant NLLB-200 1.3B. "
+        "Préserve le sens, le ton, la terminologie spécifique au domaine et les expressions idiomatiques. "
+        "Gère les entités et fragments de code en toute sécurité. "
+        "Entrée : texte brut en FR ou EN ; "
+        "Sortie : texte traduit."
     ),
     resolver=_translate_resolver,
 )

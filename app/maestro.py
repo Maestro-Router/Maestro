@@ -7,10 +7,7 @@ from sentence_transformers import SentenceTransformer
 from app.logging_utils import get_logger
 from app.tasks.base import Task
 from app.tasks.image_captioning import task as image_captioning_task
-from app.tasks.image_editing import task as image_editing_task
-from app.tasks.image_generation import task as image_generation_task
 from app.tasks.ocr import task as ocr_task
-from app.tasks.summarization import task as summarization_task
 from app.tasks.translate import task as translate_task
 from app.tasks.web_search import task as web_search_task
 
@@ -28,13 +25,10 @@ class Maestro:
         self.threshold: float = 0.0
         self.encoder_override: Any | None = None
         self.tasks: list[Task] = [
-            # translate_task,
-            # web_search_task,
-            # image_generation_task,
-            # image_editing_task,
-            # image_captioning_task,
+            translate_task,
+            web_search_task,
+            image_captioning_task,
             ocr_task,
-            # summarization_task,
         ]
         print("Maestro initialized with tasks:", [t.name for t in self.tasks])
 
@@ -85,12 +79,11 @@ class Maestro:
         # return best_spec
 
     def handle_request(self, query: str, fallback_fn=None) -> str:
-        # task = self.find_task(query)
-        # if task is None:
-        #     if fallback_fn:
-        #         return fallback_fn(query)
-        #     return "[No suitable task found]"
-        task = image_captioning_task
+        task = self.find_task(query)
+        if task is None:
+            if fallback_fn:
+                return fallback_fn(query)
+            return "[No suitable task found]"
         return task.resolve(query)
 
 maestro = Maestro()
