@@ -1,91 +1,117 @@
-from sentence_transformers import SentenceTransformer
-import numpy as np
+from functools import cached_property
+from typing import Any
 
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from app.logging_utils import get_logger
+from app.tasks.base import Task
+from app.tasks.image_captioning import task as image_captioning_task
+from app.tasks.image_editing import task as image_editing_task
+from app.tasks.image_generation import task as image_generation_task
+from app.tasks.ocr import task as ocr_task
+from app.tasks.summarization import task as summarization_task
+from app.tasks.translate import task as translate_task
+from app.tasks.web_search import task as web_search_task
+
+logger = get_logger(__name__)
 
 class Maestro:
-    def __init__(self, embedding_model="all-MiniLM-L6-v2", threshold=0.40):
-        """
+    def __init__(self, embedding_model: str = "all-MiniLM-L6-v2", threshold: float = 0.20, encoder_override: Any | None = None):
+        """Initialize the Maestro router.
+
         embedding_model: name of the embedding model (E5 recommended)
         threshold: minimum cosine similarity to route to a specific model
         """
 
-        self.task_descriptions = {
-            "summarizer": "Résumé automatique de textes courts, ton concis et neutre.",
-            # "translator": "Traduction français ↔ anglais, fidélité au sens.",
-            # "math_explainer": "Explication claire de concepts mathématiques simples.",
-            # "python_coder": "Génération de code Python clair, commenté.",
-            "web_searcher": "Recherche d'informations en ligne et fourniture de liens pertinents."
-        }
+        self.embedding_model: str = "all-MiniLM-L6-v2"
+        self.threshold: float = 0.20
+        self.encoder_override: Any | None = None
+        self.tasks: list[Task] = [
+            translate_task,
+            web_search_task,
+            image_generation_task,
+            image_editing_task,
+            image_captioning_task,
+            ocr_task,
+            summarization_task,
+        ]
+        print("Maestro initialized with tasks:", [t.name for t in self.tasks])
 
-        self.encoder = SentenceTransformer(embedding_model)
-        self.threshold = threshold
+    @cached_property
+    def encoder(self) -> SentenceTransformer:
+        enc = self.encoder_override or SentenceTransformer(self.embedding_model)
+        logger.info("Encoder initialized with model: %s", self.embedding_model)
+        return enc
 
-        # desc_texts = [model_descriptions[name] for name in self.model_names]
-        # self.model_vectors = self.encoder.encode(desc_texts, normalize_embeddings=True)
+    @cached_property
+    def task_embeddings(self) -> np.ndarray:
+        descs = [t.description for t in self.tasks]
+        vectors = self.encoder.encode(descs)
+        normalized = vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
+        logger.info("Task embeddings computed for %d tasks", len(self.tasks))
+        return normalized
 
-        print("Maestro initialized with tasks:", self.task_descriptions.keys())
+    def find_task(self, query: str) -> Task | None:
+        """Return the TaskSpec that best matches the query or None if below threshold."""
+        query_vec = self.encoder.encode([query], normalize_embeddings=True)
+        scores = (query_vec @ self.task_embeddings.T)[0]
+        best_idx = int(np.argmax(scores))
+        best_score = float(scores[best_idx])
+        best_task = self.tasks[best_idx]
+        logger.info("Query routed to task: %s (score %.3f)", best_task.name, best_score)
+        if best_score < self.threshold:
+            logger.info("No task above threshold %.3f; using fallback", self.threshold)
+            return None
+        return best_task
 
-    # def _web_search(self, query):
-    #     d = [
-    #             {
-    #                 "url": "https://example.com/1",
-    #             },
-    #             {
-    #                 "url": "https://example.com/2",
-    #             }
-    #         ]
-    #     return d
+        # scores = (query_vec @ self.model_vectors.T)[0]
+        # best_idx = int(np.argmax(scores))
+        # best_score = float(scores[best_idx])
+        # best_spec = self.tasks[best_idx]
 
-    # def route(self, query) -> str:
-    #     query_vec = self.encoder.encode([query], normalize_embeddings=True)
-    #     scores = (query_vec @ self.model_vectors.T)[0]
-    #     best_idx = np.argmax(scores) # renvoie l’indice du modèle dont la description est la plus proche de la requête.
-    #     best_score = scores[best_idx] # renvoie le score correspondant à cet indice
-    #     best_model = self.model_names[best_idx] # renvoie le nom du modèle correspondant à cet indice
+        # print("\n--- Routing Debug ---")
+        # print(f"User query: {query!r}")
+        # for spec, score in zip(self.tasks, scores, strict=False):
+        #     print(f" {spec.task.value:20s} : {score:.3f}")
+        # print("---------------------")
 
-    #     print("\n--- Routing Debug ---")
-    #     print(f"User query: {query!r}") # Le !r force l’affichage repr(), donc les guillemets et caractères spéciaux sont visibles
-    #     for name, score in zip(self.model_names, scores):
-    #         print(f" {name:20s} : {score:.3f}")
-    #     print("---------------------")
+        # # Threshold logic
+        # if best_score < self.threshold:
+        #     print(f"Pas de modèle suffisamment pertinent - au-dessus du seuil de ({self.threshold}). Using fallback.")
+        #     return None
 
-    #     # Threshold logic - si aucun modèle n'obtient un score de similarité cosine supérieur à treshold, il répond par ce texte :
-    #     if best_score < self.threshold:
-    #         print(f"Pas de modèle suffisamment pertinent - au-dessus du seuil de ({self.threshold}). Using fallback.")
-    #         return None
+        # print(f"→ Routed to: {best_spec.task.value} (score {best_score:.3f})")
+        # return best_spec
 
-    #     print(f"→ Routed to: {best_model} (score {best_score:.3f})")
-    #     return best_model
+    def _web_searcher(self, query: str) -> str:
+        results = [
+            {
+                "title": "Example Result 1",
+                "url": "https://example.com/1",
+                "snippet": "This is a snippet from example result 1."
+            },
+            {
+                "title": "Example Result 2",
+                "url": "https://example.com/2",
+                "snippet": "This is a snippet from example result 2."
+            }
+        ]
+        formatted_results = "\n".join([f"{res['title']}\n{res['url']}\n{res['snippet']}\n" for res in results])
+        return f"Here are some web search results:\n{formatted_results}"
 
-    def handle_request(self, query, fallback_fn=None):
-        return "Coucou le Hamster !"
-        # """
-        # Route the query and execute the corresponding model function.
-        # fallback_fn: function to call if no model matches threshold
-        # """
-        # model_name = self.route(query)
-        # if model_name is None:
-        #     if fallback_fn:
-        #         return fallback_fn(query)
-        #     else:
-        #         return "[No suitable model found]"
-        # else:
-        #     fn = self.model_functions[model_name]
-        #     return fn(query)
+    def _translate(self, query: str) -> str:
+        # Dummy translation function
+        return "Hola, esto es una traducción simulada al español."
 
+    def handle_request(self, query: str, fallback_fn=None) -> str:
+        spec = self.find_task(query)
+        if spec is None:
+            if fallback_fn:
+                return fallback_fn(query)
+            return "[No suitable task found]"
 
-#######################################################################
+        # delegate resolution to the TaskSpec
+        return spec.resolve(query)
 
-#                   utilisation du nom du meilleur modèle
-#                   pour lui envoyer le prompt utilisateur
-
-#######################################################################
-
-# # Exemple de requêtes
-# queries = [
-#     "Peux-tu m'expliquer comment fonctionne une dérivée ?",
-#     "Résume-moi ce paragraphe en 5 phrases.",
-#     "Traduis ce texte en anglais.",
-#     "Écris un script Python pour scraper un site.",
-#     "Comment réparer une fuite d'eau ?"
-# ]
+maestro = Maestro()

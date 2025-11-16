@@ -31,7 +31,7 @@ tasks:
     cmds:
       - ruff check --fix .
 
-  docs: 
+  docs:
     desc: Build the MkDocs static site
     cmds:
       - mkdocs build
@@ -40,3 +40,9 @@ tasks:
     desc: Serve the MkDocs site locally (dev)
     cmds:
       - mkdocs serve
+
+  laf:
+    desc: Lint and format code
+    cmds:
+      - ruff check --fix .
+      - pre-commit run -a
