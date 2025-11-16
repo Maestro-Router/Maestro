@@ -1,40 +1,126 @@
 from app.tasks.base import Task
+import torch
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 
-def _resolver(query: str) -> str:
-    return "The gyat is a slang term used to describe an attractive person. Skibidi bop yes yes yes."
+# ---------------------------------------------------------------------
+#                CONFIG - NLLB-200 1.3B
+# ---------------------------------------------------------------------
 
+_MODEL_NAME = "facebook/nllb-200-1.3B"
+
+# Mapping minimal pour ton cas FR ↔ EN
+_LANG_DETECT = {
+    "fr": "fra_Latn",
+    "en": "eng_Latn",
+}
+
+# Charge le modèle uniquement au premier appel
+_model = None
+_tokenizer = None
+
+
+def _load_nllb():
+    """
+    Lazy loading : évite de charger 3 Go de modèle au démarrage.
+    """
+    global _model, _tokenizer
+
+    if _model is None:
+        print("[Translate] Loading NLLB-200 1.3B…")
+
+        _tokenizer = AutoTokenizer.from_pretrained(_MODEL_NAME)
+
+        _model = AutoModelForSeq2SeqLM.from_pretrained(
+            _MODEL_NAME,
+            torch_dtype=torch.float16,  # indispensable pour 1.3B, sinon OOM
+            device_map="auto",          # GPU si dispo, CPU sinon
+        )
+
+        print("[Translate] Model loaded successfully.")
+
+    return _tokenizer, _model
+
+
+# ---------------------------------------------------------------------
+#                UTIL : Détection ultra simple de langue
+# ---------------------------------------------------------------------
+
+def _detect_language(text: str) -> str:
+    """
+    On reste frugal → une heuristique ultra simple suffit ici.
+    NLLB exige des codes spécifiques (fra_Latn, eng_Latn).
+    """
+    text_low = text.lower()
+
+    # Quelques heuristiques très efficaces pour FR/EN
+    fr_markers = ["é", "è", "ç", "à", "ou", "est", "avec", "pour", "dans"]
+    en_markers = ["the ", "and ", "with ", "from ", "you ", "is ", "are "]
+
+    if any(m in text_low for m in fr_markers):
+        return "fra_Latn"
+    if any(m in text_low for m in en_markers):
+        return "eng_Latn"
+
+    # fallback : supposons FR → très conservateur
+    return "fra_Latn"
+
+
+# ---------------------------------------------------------------------
+#                FONCTION PRINCIPALE : traduction
+# ---------------------------------------------------------------------
+
+def _translate_resolver(query: str) -> str:
+    """
+    Appelé par le routeur.
+    Prend un texte (FR ou EN) et renvoie la traduction dans l'autre langue.
+    """
+    tokenizer, model = _load_nllb()
+
+    # détecte la langue source
+    src_lang = _detect_language(query)
+
+    # déduit la langue cible
+    tgt_lang = "eng_Latn" if src_lang == "fra_Latn" else "fra_Latn"
+
+    # encode
+    inputs = tokenizer(
+        query,
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+    ).to(model.device)
+
+    # génération (beam search pour qualité max)
+    with torch.no_grad():
+        generated_tokens = model.generate(
+            **inputs,
+            forced_bos_token_id=tokenizer.convert_tokens_to_ids(tgt_lang),
+            max_length=1000,
+            num_beams=5,
+            length_penalty=0.95
+        )
+
+    # decode
+    translation = tokenizer.batch_decode(
+        generated_tokens,
+        skip_special_tokens=True
+    )[0]
+
+    return translation
+
+
+# ---------------------------------------------------------------------
+#                MODULE TASK EXPORTÉ
+# ---------------------------------------------------------------------
 
 task = Task(
     name="Translate",
     description=(
-        "High-fidelity bilingual translation (French <-> English) focused on preserving meaning, "
-        "register, and domain-specific terms. Ideal for user-facing content, technical text, "
-        "and short conversational turns. Handles idiomatic phrases by preserving intent and "
-        "producing natural target-language phrasing. Input: plain text in FR or EN. Output: "
-        "translated text in the opposite language. Edge cases: very short fragments, code "
-        "snippets or named entities - resolver should preserve entities and avoid modifying "
-        "programming tokens."
-    ),
-    resolver=_resolver,
-)
-
-
-def _translate_resolver(query: str) -> str:
-    # placeholder translator resolver - replace with real translation call
-    return f"[translated simulated] {query}"
-
-
-TASK = Task(
-    name="Translate",
-    description=(
-        "High-fidelity bilingual translation (French <-> English) focused on preserving meaning, "
-        "register, and domain-specific terms. Ideal for user-facing content, technical text, "
-        "and short conversational turns. Handles idiomatic phrases by preserving intent and "
-        "producing natural target-language phrasing. Input: plain text in FR or EN. Output: "
-        "translated text in the opposite language. Edge cases: very short fragments, code "
-        "snippets or named entities - resolver should preserve entities and avoid modifying "
-        "programming tokens."
+        "High-fidelity bilingual translation (French <-> English) using "
+        "NLLB-200 1.3B. Preserves meaning, tone, domain terminology, and "
+        "idiomatic expressions. Handles entities and code fragments safely. "
+        "Input: plain text in FR or EN. Output: translated text."
     ),
     resolver=_translate_resolver,
 )

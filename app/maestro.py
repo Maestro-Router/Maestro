@@ -25,7 +25,7 @@ class Maestro:
         """
 
         self.embedding_model: str = "all-MiniLM-L6-v2"
-        self.threshold: float = 0.20
+        self.threshold: float = 0.0
         self.encoder_override: Any | None = None
         self.tasks: list[Task] = [
             translate_task,
