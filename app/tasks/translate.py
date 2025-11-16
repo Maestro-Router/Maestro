@@ -34,7 +34,7 @@ def _load_nllb():
         _model = AutoModelForSeq2SeqLM.from_pretrained(
             _MODEL_NAME,
             torch_dtype=torch.float16,  # indispensable pour 1.3B, sinon OOM
-            device_map="auto",          # GPU si dispo, CPU sinon
+            device_map="cuda" if torch.cuda.is_available() else "cpu",          # GPU si dispo, CPU sinon
         )
 
         print("[Translate] Model loaded successfully.")

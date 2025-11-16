@@ -3,7 +3,7 @@
 Run the Gradio app:
 
 ```bash
-uv run gradio app/front.py
+uv run gradio app/main.py
 ```
 
 ## Presentation
