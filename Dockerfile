@@ -27,6 +27,10 @@ EXPOSE 7860
 # Set environment variables for better container behavior
 ENV PYTHONUNBUFFERED=1
 
+# Health check to verify the service is running
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860').getcode() == 200" || exit 1
+
 # Run the application
 # Using uv run to ensure proper environment
 CMD ["uv", "run", "gradio", "app/main.py", "--server-name", "0.0.0.0", "--server-port", "7860"]
