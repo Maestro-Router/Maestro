@@ -3,6 +3,18 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 
+def text_query(query):
+    """
+    Retourne toujours le texte à traiter sous forme de string.
+    """
+    if isinstance(query, dict):
+        return query.get("text", "")
+    elif isinstance(query, str):
+        return query
+    else:
+        raise TypeError(f"Unsupported query type: {type(query)}")
+
+
 # ---------------------------------------------------------------------
 #                CONFIG - NLLB-200 1.3B
 # ---------------------------------------------------------------------
@@ -70,22 +82,25 @@ def _detect_language(text: str) -> str:
 #                FONCTION PRINCIPALE : traduction
 # ---------------------------------------------------------------------
 
-def _translate_resolver(query: str) -> str:
+def _translate_resolver(query: dict) -> dict:
     """
     Appelé par le routeur.
     Prend un texte (FR ou EN) et renvoie la traduction dans l'autre langue.
     """
     tokenizer, model = _load_nllb()
 
+    # récupérer la partie prompt textuel du dictionnaire query
+    text = text_query(query)
+
     # détecte la langue source
-    src_lang = _detect_language(query)
+    src_lang = _detect_language(text)
 
     # déduit la langue cible
     tgt_lang = "eng_Latn" if src_lang == "fra_Latn" else "fra_Latn"
 
     # encode
     inputs = tokenizer(
-        query,
+        text,
         return_tensors="pt",
         padding=True,
         truncation=True,
