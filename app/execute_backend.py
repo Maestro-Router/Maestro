@@ -1,4 +1,6 @@
 # %%
+import random
+
 def mock_llm(prompt: str):
     """
     A simple mocked LLM that pretends to generate a model output.
@@ -46,6 +48,35 @@ def mock_web_search(query: str):
 # image finding
 # Image editing
 # image generation
+
+
+def estimate_consumption(task_type: str = "generic", token_nb: int | None = None):
+    """Return a mock estimation of emissions (g CO2eq) and energy consumption (Wh).
+
+    If token_nb is provided, lightly scale the randomized baseline to reflect size.
+    This is still purely mock logic (not based on real measurements).
+    """
+    ranges = {
+        "llm": ((0.5, 5.0), (2.0, 15.0)),
+        "web_search": ((0.1, 1.5), (0.5, 5.0)),
+        "rag": ((0.2, 2.0), (1.0, 8.0)),
+        "image_generation": ((10.0, 50.0), (30.0, 150.0)),
+        "tts": ((0.3, 3.0), (1.0, 10.0)),
+        "generic": ((0.4, 4.0), (1.0, 12.0)),
+    }
+    (co2_low, co2_high), (e_low, e_high) = ranges.get(task_type, ranges["generic"])
+    base_co2 = random.uniform(co2_low, co2_high)
+    base_energy = random.uniform(e_low, e_high)
+    if token_nb is not None and token_nb > 0:
+        # Very gentle scaling factors just to show differentiation.
+        scale = 1 + min(token_nb, 2000) / 10000  # caps growth
+        base_co2 *= scale
+        base_energy *= scale
+    return {
+        "co2_emissions_g": round(base_co2, 2),
+        "energy_consumption_wh": round(base_energy, 2),
+        "token_nb": token_nb,
+    }
 
 
 class SearchModule:
