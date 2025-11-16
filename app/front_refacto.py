@@ -10,6 +10,10 @@ total_co2_grams = 0.0   # Grams of CO2
 # Store feedback for each message
 feedback_log = {}
 
+# Store currently attached files
+attached_files = []
+files_just_attached = False
+
 def calculate_energy_impact(message, response):
     """
     Calculate realistic energy consumption and CO2 emissions for an LLM query.
@@ -86,7 +90,7 @@ with gr.Blocks(theme="ocean", css="""
             file_count="multiple",
             file_types=[".txt", ".pdf", ".doc", ".docx", ".csv", ".json", ".py", ".md"],
             scale=0,
-            size="sm"
+            size="lg"
         )
     
     # Buttons below the text input
@@ -108,18 +112,24 @@ with gr.Blocks(theme="ocean", css="""
     """)
     
     def respond(message, chat_history, files):
-        global total_watt_hours, total_co2_grams
+        global total_watt_hours, total_co2_grams, attached_files, files_just_attached
         
-        if not message.strip() and not files:
+        # Update attached files list if new files provided
+        if files:
+            attached_files = files if isinstance(files, list) else [files]
+            files_just_attached = True
+        
+        if not message.strip():
             return "", chat_history, f"⚡ Energy: {total_watt_hours:.3f} Wh", f"🌍 CO2: {total_co2_grams:.3f} g", gr.update(visible=False), ""
         
         # Build the full message with file information
         full_message = message
         user_display_message = message
         
-        if files:
+        # Only show file info in display message if files were JUST attached
+        if attached_files and files_just_attached:
             file_info = "\n\n📎 Attached files:\n"
-            for file in files:
+            for file in attached_files:
                 if hasattr(file, 'name'):
                     file_path = file.name if hasattr(file, 'name') else str(file)
                     file_info += f"- {file_path}\n"
@@ -127,16 +137,20 @@ with gr.Blocks(theme="ocean", css="""
                 else:
                     file_info += f"- {str(file)}\n"
                     print(f"📎 Attachment location: {str(file)}")
-            full_message += file_info
             user_display_message += file_info
+            files_just_attached = False  # Reset flag after showing once
+        
+        # Always include attached files in the full message to backend
+        if attached_files:
+            backend_file_info = "\n\n📎 Context - Attached files:\n"
+            for file in attached_files:
+                file_path = file.name if hasattr(file, 'name') else str(file)
+                backend_file_info += f"- {file_path}\n"
+            full_message += backend_file_info
         
         # Get response
         response = mock_llm(full_message)
         bot_message = response["response"]
-        
-        # If files were attached, add info to bot response
-        if files:
-            bot_message += f"\n\n✅ Processed {len(files)} file(s)"
         
         # Calculate realistic energy impact
         watt_hours, co2_grams = calculate_energy_impact(full_message, bot_message)
@@ -178,10 +192,12 @@ with gr.Blocks(theme="ocean", css="""
         return gr.update(visible=True, value=feedback_text)
     
     def reset_counters():
-        global total_watt_hours, total_co2_grams, feedback_log
+        global total_watt_hours, total_co2_grams, feedback_log, attached_files, files_just_attached
         total_watt_hours = 0.0
         total_co2_grams = 0.0
         feedback_log = {}
+        attached_files = []
+        files_just_attached = False
         return [], "⚡ Energy: 0.000 Wh", "🌍 CO2: 0.000 g", gr.update(visible=False), ""
     
     # Event handlers
